@@ -1,0 +1,62 @@
+//
+//  ViewController1.m
+//  TestOrientation
+//
+//  Created by lieyunye on 4/21/16.
+//  Copyright © 2016 lieyunye. All rights reserved.
+//
+
+#import "ViewController1.h"
+#import "OrientationHelper.h"
+
+@interface ViewController1 ()
+
+@end
+
+@implementation ViewController1
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view from its nib.
+    self.view.backgroundColor = [UIColor redColor];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    NSLog(@"%s",__FUNCTION__);
+}
+
+- (IBAction)disAction:(id)sender {
+    [self dismissViewControllerAnimated:YES completion:^{
+        
+    }];
+}
+
+-(BOOL)shouldAutorotate
+{
+    return YES;
+}
+
+-(UIInterfaceOrientationMask)supportedInterfaceOrientations
+{
+    return [[OrientationHelper sharedClient] currentInterfaceOrientation];;
+}
+
+
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end
