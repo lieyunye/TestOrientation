@@ -13,7 +13,8 @@
 {
     UIInterfaceOrientationMask _interfaceOrientationMask;
     CMMotionManager *motionManager;
-
+    BOOL _stopCheckOrientation;
+    
 }
 
 + (instancetype)sharedClient
@@ -31,6 +32,7 @@
     self = [super init];
     if (self) {
         [self startListeningDeviceOrientation];
+        
     }
     return self;
 }
@@ -42,81 +44,61 @@
 
 - (void)setToLandScapeMode
 {
+    if (!_stopCheckOrientation) {
+        if ([[UIDevice currentDevice] orientation] == UIDeviceOrientationLandscapeLeft) {
+            [[UIDevice currentDevice] setValue:[NSNumber numberWithInteger:UIDeviceOrientationPortrait] forKey:@"orientation"];
+        }
+    }
     _interfaceOrientationMask = UIInterfaceOrientationMaskLandscapeRight;
     [[UIDevice currentDevice] setValue:[NSNumber numberWithInteger:UIDeviceOrientationLandscapeLeft] forKey:@"orientation"];
+    [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationLandscapeRight];
 }
 
 - (void)setToPortraitMode
 {
+    if (!_stopCheckOrientation) {
+        //1、如果是device已经是UIDeviceOrientationPortrait 需设置先UIDeviceOrientationLandscapeLeft后再设置UIDeviceOrientationPortrait来触发layoutsubviews 2、_stopCheckOrientation来防止设置了UIDeviceOrientationLandscapeLeft，之后shouldAutorotate返回NO，此时再设置UIDeviceOrientationPortrait无效的问题
+        if ([[UIDevice currentDevice] orientation] == UIDeviceOrientationPortrait) {
+            [[UIDevice currentDevice] setValue:[NSNumber numberWithInteger:UIDeviceOrientationLandscapeLeft] forKey:@"orientation"];
+        }
+    }
     _interfaceOrientationMask = UIInterfaceOrientationMaskPortrait;
     [[UIDevice currentDevice] setValue:[NSNumber numberWithInteger:UIDeviceOrientationPortrait] forKey:@"orientation"];
+    [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait];
 }
 
 - (void) startListeningDeviceOrientation
 {
+    _stopCheckOrientation = NO;
+//    if (IOS_VERSION < 8) {//iOS8以下不支持自动旋转
+//        return;
+//    }
     motionManager = [[CMMotionManager alloc] init];
     motionManager.accelerometerUpdateInterval=1.0/10.0;
     if ([motionManager isAccelerometerAvailable]) {
-        NSOperationQueue *que = [[NSOperationQueue alloc] init];
-        [motionManager startAccelerometerUpdatesToQueue:que withHandler:^(CMAccelerometerData *accelerometerData, NSError *error) {
-            [self performSelectorOnMainThread:@selector(onMainThread:)
-                                   withObject:accelerometerData waitUntilDone:NO];
+        [motionManager startAccelerometerUpdatesToQueue:[NSOperationQueue mainQueue] withHandler:^(CMAccelerometerData *accelerometerData, NSError *error) {
+            if (_stopCheckOrientation) {
+                _interfaceOrientationMask = UIInterfaceOrientationMaskPortrait;
+                return;
+            }
+            if (accelerometerData.acceleration.x <= -0.75) {
+                _interfaceOrientationMask = UIInterfaceOrientationMaskLandscapeRight;
+//                DDLogDebug(@"UIInterfaceOrientationMaskLandscapeRight");
+            }else if (accelerometerData.acceleration.y <= -0.75) {
+                _interfaceOrientationMask = UIInterfaceOrientationMaskPortrait;
+//                DDLogDebug(@"UIDeviceOrientationPortrait");
+            }else {
+//                DDLogDebug(@"UIDeviceOrientationElse");
+                return;
+            }
         }];
     }
-    
 }
 
 - (void) stopListeningDeviceOrientation
 {
+    _stopCheckOrientation = YES;
     [motionManager stopAccelerometerUpdates];
-}
-
-- (void)onMainThread:(CMAccelerometerData *)accelerometerData{
-
-    double x = accelerometerData.acceleration.x;
-    double y = accelerometerData.acceleration.y;
-    double z = accelerometerData.acceleration.z;
-    
-    UIDeviceOrientation _deviceOrientation;
-
-    if (fabs(y) < 0.5 && fabs(z) < 0.6) {
-        if (x < 0) {
-             _deviceOrientation = UIDeviceOrientationLandscapeLeft;
-        }else {
-            _deviceOrientation = UIDeviceOrientationLandscapeRight;
-        }
-    }else if (fabs(y) > 0.8 && fabs(z) < 0.6) {
-        _deviceOrientation = UIDeviceOrientationPortrait;
-    }
-    
-    switch (_deviceOrientation) {
-        case UIDeviceOrientationFaceDown:
-            NSLog(@"UIDeviceOrientationFaceDown");
-            break;
-        case UIDeviceOrientationFaceUp:
-            NSLog(@"UIDeviceOrientationFaceUp");
-            break;
-        case UIDeviceOrientationLandscapeLeft:
-            _interfaceOrientationMask = UIInterfaceOrientationMaskLandscapeRight;
-            break;
-        case UIDeviceOrientationLandscapeRight:
-            NSLog(@"UIDeviceOrientationLandscapeRight");
-
-            break;
-        case UIDeviceOrientationPortrait:
-            _interfaceOrientationMask = UIInterfaceOrientationMaskPortrait;
-            break;
-        case UIDeviceOrientationUnknown:
-            NSLog(@"UIDeviceOrientationUnknown");
-
-            break;
-        case UIDeviceOrientationPortraitUpsideDown:
-            NSLog(@"UIDeviceOrientationPortraitUpsideDown");
-
-            break;
-        default:
-            break;
-    }
 }
 
 @end
